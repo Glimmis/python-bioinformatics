@@ -1,0 +1,7 @@
+def dna_till_rna(dna):
+    return dna.replace("T", "U")
+
+dna = "ATCGGCTAGCGCGATAT"
+
+print("DNA:", dna)
+print("RNA:", dna_till_rna(dna))
