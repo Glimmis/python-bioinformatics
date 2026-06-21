@@ -1,0 +1,7 @@
+def reverse_dna(dna):
+    return dna[::-1]
+
+dna = "ATCGGCTAGCGCGATAT"
+
+print("Original:", dna)
+print("Baklänges:", reverse_dna(dna))
