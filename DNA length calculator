@@ -1,0 +1,7 @@
+def dna_langd(dna):
+    return len(dna)
+
+dna = "ATCGGCTAGCGCGATAT"
+
+print("DNA-sekvens:", dna)
+print("Längd:", dna_langd(dna))
