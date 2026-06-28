@@ -124,6 +124,6 @@ def translate_rna(rna):
     print("Protein (hela namn):", " - ".join(protein_full))
 
 
-rna = "AUGGCUUUUGGAGAAUAA"
+rna = "AUGGCUUUU"
 
 translate_rna(rna)
