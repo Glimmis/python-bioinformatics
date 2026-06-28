@@ -1,0 +1,27 @@
+def find_all_orfs(rna):
+    stop_codons = ["UAA", "UAG", "UGA"]
+    orfs = []
+
+    for start in range(len(rna)):
+        if rna[start:start+3] == "AUG":
+
+            for i in range(start, len(rna), 3):
+                codon = rna[i:i+3]
+
+                if codon in stop_codons:
+                    orf = rna[start:i+3]
+                    orfs.append(orf)
+                    break
+
+    return orfs
+
+
+rna = "CCCAUGGCUUAAACCAUGUUUGGAUGA"
+
+print("RNA sequence:", rna)
+
+orfs = find_all_orfs(rna)
+
+print("Found ORFs:")
+for orf in orfs:
+    print(orf)
