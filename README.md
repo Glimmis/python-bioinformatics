@@ -13,7 +13,7 @@ for working with DNA, RNA, and protein sequences.
 | `RNA Converter` | Transcribes DNA to RNA by replacing every T with U. |
 | `Reverse DNA` | Reverses a DNA sequence. |
 | `Reverse_complement(dna)` | Returns the reverse complement of a DNA sequence. |
-| `RNA -> Protein, RNA_translation.py` | Translates an RNA sequence into a protein, showing 1-letter, 3-letter, and full amino acid names (stops at the first stop codon). |
+| `rna_translation.py` | Translates an RNA sequence into a protein, showing 1-letter, 3-letter, and full amino acid names (stops at the first stop codon). |
 | `Open Reading Frame (ORF) Finder` | Finds open reading frames on both the forward strand and the reverse complement, and translates each ORF to protein. |
 | `ORF Finder v2.0` | Extended ORF finder that also reports ORF length, GC content, protein length, and molecular weight, and exports the results to a CSV file. |
 
