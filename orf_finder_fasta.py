@@ -466,8 +466,8 @@ def run_orf_finder(fasta_filepath, output_csv=None):
 # 2. Change USE_EXAMPLE_FASTA to False
 # 3. Change FASTA_FILE to your filename, for example "sars_cov_2.fasta"
 
-USE_EXAMPLE_FASTA = False
-FASTA_FILE = "GCA_009858895.3_ASM985889v3_genomic.fna"
+USE_EXAMPLE_FASTA = True
+FASTA_FILE = "example_sequences.fasta"
 OUTPUT_CSV = None
 
 if USE_EXAMPLE_FASTA:
