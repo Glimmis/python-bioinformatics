@@ -16,6 +16,7 @@ for working with DNA, RNA, and protein sequences.
 | `rna_translation.py` | Translates an RNA sequence into a protein, showing 1-letter, 3-letter, and full amino acid names (stops at the first stop codon). |
 | `Open Reading Frame (ORF) Finder` | Finds open reading frames on both the forward strand and the reverse complement, and translates each ORF to protein. |
 | `ORF Finder v2.0` | Extended ORF finder that also reports ORF length, GC content, protein length, and molecular weight, and exports the results to a CSV file. |
+| `orf_finder_fasta.py` | Notebook-friendly ORF finder that reads a FASTA file, analyzes every sequence on both strands, flags the longest ORF per sequence, and exports the results to a CSV file. Set `USE_EXAMPLE_FASTA = True` to run it on built-in example sequences. |
 
 ## Running a script
 
