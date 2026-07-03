@@ -18,14 +18,39 @@ import time
 from Bio.Blast import NCBIWWW, NCBIXML
 
 
-def blast_one_protein(protein_sequence, evalue_cutoff=1e-5, hitlist_size=5):
+# Title fragments that mean "no useful name". We prefer a properly named hit
+# over these placeholder annotations (which also cover most spike-in /
+# contamination entries deposited without a real protein name).
+UNINFORMATIVE_TITLE_MARKERS = (
+    "unnamed protein",
+    "hypothetical protein",
+    "uncharacterized protein",
+    "predicted protein",
+    "putative uncharacterized",
+)
+
+
+def is_informative_title(title):
+    """Return True if the hit title looks like a real, named protein."""
+    lowered = title.lower()
+    for marker in UNINFORMATIVE_TITLE_MARKERS:
+        if marker in lowered:
+            return False
+    return True
+
+
+def blast_one_protein(protein_sequence, evalue_cutoff=1e-5, hitlist_size=20):
     """
     Run BLASTp for a single protein sequence against NCBI 'nr'.
 
-    Returns a dict describing the best hit, or None if there was no significant
-    hit below evalue_cutoff.
+    Walks the hit list (already ordered best-score first) and returns the best
+    hit that has a MEANINGFUL name, skipping "unnamed / hypothetical /
+    uncharacterized protein" entries and the spike-in contamination noise that
+    phiX174 in particular produces. If every significant hit is uninformative,
+    it falls back to the best hit so a real gene is never lost. Returns None
+    only if there is no significant hit at all.
     """
-    # Submit the search and wait for NCBI to return XML results.
+    # Ask for more hits so there is room to skip past the unnamed ones.
     result_handle = NCBIWWW.qblast(
         program="blastp",
         database="nr",
@@ -37,24 +62,33 @@ def blast_one_protein(protein_sequence, evalue_cutoff=1e-5, hitlist_size=5):
     blast_record = NCBIXML.read(result_handle)
     result_handle.close()
 
-    if len(blast_record.alignments) == 0:
-        return None
+    fallback = None  # best significant hit, even if it has no real name
 
-    # The first alignment is the best-scoring hit.
-    best_alignment = blast_record.alignments[0]
-    best_hsp = best_alignment.hsps[0]
+    for alignment in blast_record.alignments:
+        best_hsp = alignment.hsps[0]
 
-    if best_hsp.expect > evalue_cutoff:
-        return None
+        if best_hsp.expect > evalue_cutoff:
+            continue  # not significant enough
 
-    percent_identity = 100.0 * best_hsp.identities / best_hsp.align_length
+        percent_identity = 100.0 * best_hsp.identities / best_hsp.align_length
+        hit = {
+            "hit_title": alignment.title,
+            "e_value": best_hsp.expect,
+            "percent_identity": round(percent_identity, 1),
+            "align_length": best_hsp.align_length,
+            "named": is_informative_title(alignment.title),
+        }
 
-    return {
-        "hit_title": best_alignment.title,
-        "e_value": best_hsp.expect,
-        "percent_identity": round(percent_identity, 1),
-        "align_length": best_hsp.align_length,
-    }
+        # Keep the very first significant hit as a safety net.
+        if fallback is None:
+            fallback = hit
+
+        # Return the first significant hit that actually carries a real name.
+        if hit["named"]:
+            return hit
+
+    # No named hit found: return the best significant one (or None if there was none).
+    return fallback
 
 
 def annotate_orfs_with_blast(orfs, min_protein_length=50, evalue_cutoff=1e-5,
