@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ORF finder generated output
+orf_results.csv
+*_orf_results.csv
+orf_annotation.csv
+*_annotation.csv
+
+# Sequence data (downloaded genomes and generated example files)
+*.fasta
+*.fa
+example_sequences.fasta
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
