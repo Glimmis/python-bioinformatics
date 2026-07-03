@@ -153,7 +153,38 @@ def annotate_orfs_with_blast(orfs, min_protein_length=50, evalue_cutoff=1e-5,
         # Be polite to NCBI: wait between requests.
         time.sleep(pause_seconds)
 
+    summarize_annotation(orfs)
     return orfs
+
+
+def summarize_annotation(orfs):
+    """
+    Print a signal-vs-noise summary of the BLASTed ORFs.
+
+    Only ORFs that were actually BLASTed (they carry the is_probable_gene key)
+    are counted. Reports how many matched a known protein (probable genes),
+    how many had no significant hit (probable noise), and how many errored.
+    """
+    blasted = [o for o in orfs if "is_probable_gene" in o]
+
+    if len(blasted) == 0:
+        print("\nNo ORFs were BLASTed, so there is nothing to summarize.")
+        return
+
+    genes = sum(1 for o in blasted if o["is_probable_gene"] is True)
+    noise = sum(1 for o in blasted if o["is_probable_gene"] is False)
+    errors = sum(1 for o in blasted if o["is_probable_gene"] is None)
+
+    print()
+    print("=" * 50)
+    print("Annotation summary")
+    print("=" * 50)
+    print("{} of {} BLASTed ORFs matched a known protein (probable genes)."
+          .format(genes, len(blasted)))
+    print("No significant hit (probable random ORFs):", noise)
+    if errors > 0:
+        print("BLAST errors (not classified):", errors)
+    print("=" * 50)
 
 
 def export_annotated_orfs_to_csv(orfs, filename="orf_annotation.csv"):
