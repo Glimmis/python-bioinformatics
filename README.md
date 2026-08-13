@@ -91,6 +91,36 @@ its job.
 The proteins are synthetic, so BLASTing them returns nothing — the annotation
 step is meant to be run on real sequence.
 
+## Real data: phiX174
+
+`examples/phix174.fasta` is the real phiX174 genome (NC_001422.1, 5,386 bp),
+downloaded from NCBI. Unlike the synthetic contig above, its proteins are real
+and BLASTing them returns actual matches.
+
+```bash
+python orf_finder.py examples/phix174.fasta --min-length 50 \
+    -o examples/phix174_orfs.csv
+python blast_annotate.py examples/phix174_orfs.csv --max-orfs 5 \
+    -o examples/phix174_annotation.csv
+```
+
+`orf_finder.py` found 22 ORFs (16 forward, 6 reverse complement) at
+`--min-length 50`; the five longest were BLASTed. The committed output is
+`examples/phix174_annotation.csv`:
+
+| strand | start | end | aa | BLAST hit | E-value |
+| --- | --- | --- | --- | --- | --- |
+| Forward | 1001 | 2284 | 427 | MULTISPECIES: major capsid protein [Bacteria] (matches capsid protein F, Escherichia phage phiX174) | 0.0 |
+| Reverse complement | 1094 | 1651 | 185 | conserved hypothetical protein [Mesorhizobium sp. ORS 3324] | 1.92504e-128 |
+| Forward | 2395 | 2922 | 175 | No significant hit | |
+| Forward | 2931 | 3917 | 328 | MULTISPECIES: Minor spike protein [Bacteria] (matches minor spike protein H, Sinsheimervirus phiX174) | 0.0 |
+| Forward | 3076 | 3684 | 202 | Minor spike protein H (modular protein) [Microbacterium sp. C448] | 2.7869e-110 |
+
+Two of the five BLASTed ORFs — the 427 aa and 328 aa forward-strand proteins —
+matched known phiX174 genes by name (capsid protein F and minor spike protein
+H); the other two significant hits were homologs in unrelated organisms, and
+the 175 aa ORF returned no significant hit.
+
 ## Installation
 
 The ORF finder needs only the standard library. The BLAST step needs Biopython:
