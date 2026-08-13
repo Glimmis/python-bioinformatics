@@ -1,69 +1,130 @@
 # python-bioinformatics
 
-My first bioinformatics Python projects — a small collection of beginner scripts
-for working with DNA, RNA, and protein sequences.
+A small genome annotation pipeline in Python: **FASTA → ORF prediction → BLAST
+annotation → CSV.**
 
-## Scripts
-
-| Script | What it does |
-| --- | --- |
-| `base_counter.py` | Counts how many times each base (A, T, C, G) appears in a DNA sequence. |
-| `DNA length calculator` | Returns the length (number of bases) of a DNA sequence. |
-| `gc_halt.py` | Calculates the GC content of a DNA sequence, as a percentage. |
-| `RNA Converter` | Transcribes DNA to RNA by replacing every T with U. |
-| `Reverse DNA` | Reverses a DNA sequence. |
-| `Reverse_complement(dna)` | Returns the reverse complement of a DNA sequence. |
-| `rna_translation.py` | Translates an RNA sequence into a protein, showing 1-letter, 3-letter, and full amino acid names (stops at the first stop codon). |
-| `orf_finder.py` | Notebook-friendly ORF finder that reads a FASTA file and finds open reading frames on both strands. Includes a minimum-length filter, maps reverse-strand coordinates back to the original sequence, collapses nested ORFs (one ORF per stop codon), and exports the results to a CSV file. |
-| `Blast_annotate.py` | Add-on that takes the ORFs from `orf_finder.py` and BLASTs each predicted protein against NCBI to tell which are real, known genes and which are random ORFs. Requires `biopython` and an internet connection. |
-
-## Running a script
-
-Each script is self-contained and runs on its own. From the repository folder:
+Given a genome or contig, it finds the candidate protein-coding genes and then
+asks NCBI which of them correspond to proteins that are actually known — the
+two halves of gene annotation, structural and functional, in about 700 lines of
+dependency-light Python.
 
 ```bash
-python base_counter.py
+# 1. Structural annotation: find the ORFs
+python orf_finder.py examples/example_contig.fasta --min-length 100
+
+# 2. Functional annotation: BLAST them against NCBI nr
+python blast_annotate.py example_contig_orfs.csv --max-orfs 3
 ```
 
-The example DNA/RNA sequence is defined at the bottom of each script — edit that
-value to run it on your own sequence.
+## Why
 
-> **Note:** Some scripts print their output in Swedish (for example `DNA-sekvens`
-> for "DNA sequence").
+An ORF finder on its own reports every stretch between a start and a stop
+codon, and most of those occur by chance. The interesting question is which
+candidates are real. Running the predicted proteins through BLASTp against the
+non-redundant database separates the two, so the output is a ranked list of
+probable genes rather than a list of possibilities.
 
-## ORF → gene annotation pipeline
+## The two steps
 
-`orf_finder.py` and `Blast_annotate.py` work together as a small genome
-annotation pipeline: **FASTA → ORF prediction → BLAST annotation → CSV.**
+### `orf_finder.py` — structural annotation
 
-1. **Find ORFs** (structural annotation) — locate the candidate genes.
-2. **BLAST them** (functional annotation) — ask NCBI which candidates match a
-   known protein, separating real genes from random ORFs.
+Scans every sequence in a FASTA file for complete ORFs (ATG to stop codon) in
+all three reading frames on both strands, translates them, and writes a CSV
+with coordinates, strand, frame, length, GC content, protein sequence and
+estimated molecular weight.
 
-First install Biopython (only needed for the BLAST step):
+Details worth knowing about:
+
+- **Reverse-strand coordinates are mapped back to the original sequence**, so
+  start/end always refer to the numbering in the input FASTA rather than to the
+  reverse-complemented copy.
+- **ORFs sharing a stop codon are collapsed to the longest one.** Such ORFs are
+  the same gene read from different internal start codons; reporting all of
+  them would inflate the count several-fold. Real ORF finders report one ORF
+  per stop codon, and so does this one.
+- **The length filter is applied before translation**, so large inputs do not
+  pay to translate ORFs that will then be discarded.
+- Reverse complement uses `str.translate` — O(n) rather than the O(n²) of
+  character-by-character concatenation.
+
+### `blast_annotate.py` — functional annotation
+
+Takes the ORF CSV and runs BLASTp against NCBI `nr` for each predicted protein,
+longest first. It records the hit title, E-value and percent identity, and
+classifies each ORF as a probable gene or probable noise.
+
+Hits titled "hypothetical", "uncharacterized" or "unnamed protein" are skipped
+in favour of a properly named hit further down the list, with the best
+significant hit retained as a fallback so a real gene is never lost to a
+placeholder annotation.
+
+Online BLAST is slow (roughly 0.5–3 minutes per sequence) and rate limited, so
+`--max-orfs` is there to test on a handful first. For hundreds of sequences,
+install BLAST+ locally instead.
+
+## Worked example
+
+`examples/example_contig.fasta` is a synthetic 3 612 bp contig with four
+protein-coding genes planted at known positions — three on the forward strand,
+one on the reverse — inside random intergenic sequence. It is generated from a
+fixed random seed by `examples/make_example_contig.py`, so it is reproducible.
 
 ```bash
-pip install biopython
+python orf_finder.py examples/example_contig.fasta --min-length 100 \
+    -o examples/example_contig_orfs.csv
 ```
 
-Then, from a notebook or script in the repository folder:
+The committed output is `examples/example_contig_orfs.csv`:
+
+| strand | frame | start | end | bp | aa | GC % | longest |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Forward | 1 | 994 | 1716 | 723 | 240 | 48.27 | |
+| Forward | 2 | 251 | 793 | 543 | 180 | 46.78 | |
+| Forward | 2 | 2480 | 3412 | 933 | 310 | 53.38 | ✓ |
+| Reverse complement | 2 | 1917 | 2279 | 363 | 120 | 51.24 | |
+
+All four planted genes are recovered at the right coordinates and on the right
+strand, and the nine raw ORFs collapse to four. The reverse-strand gene is
+reported in forward-sequence coordinates, which is the coordinate mapping doing
+its job.
+
+The proteins are synthetic, so BLASTing them returns nothing — the annotation
+step is meant to be run on real sequence.
+
+## Installation
+
+The ORF finder needs only the standard library. The BLAST step needs Biopython:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Command-line options
+
+```
+orf_finder.py FASTA [-o CSV] [-m MIN_LENGTH] [--detail] [--no-csv] [-q]
+blast_annotate.py ORF_CSV [-o CSV] [-m MIN_LENGTH] [-n MAX_ORFS] [-e EVALUE] [--pause SECONDS]
+```
+
+Both modules are importable as well:
 
 ```python
 from orf_finder import run_orf_finder
 from blast_annotate import annotate_orfs_with_blast, export_annotated_orfs_to_csv
 
-# 1. Find ORFs in a genome
-orfs = run_orf_finder("my_genome.fasta", min_protein_length=50)
-
-# 2. BLAST the longest ORFs against NCBI (start small — each takes 1–3 minutes)
+orfs = run_orf_finder("genome.fasta", min_protein_length=100)
 annotate_orfs_with_blast(orfs, max_orfs=3)
-
-# 3. Save the annotated results
-export_annotated_orfs_to_csv(orfs, "my_genome_annotation.csv")
+export_annotated_orfs_to_csv(orfs, "genome_annotation.csv")
 ```
 
-The BLAST step prints a summary at the end, e.g.
-`3 of 3 BLASTed ORFs matched a known protein (probable genes).`
+## Repository layout
 
-> **Note:** online BLAST is slow and rate limited. Use `max_orfs` to test on a
-> few ORFs first, and raise `min_protein_length` (e.g. to 100) on real genomes.
+```
+orf_finder.py           structural annotation
+blast_annotate.py       functional annotation
+examples/               synthetic contig, its ORF output, and the generator script
+basics/                 short single-purpose scripts written while learning Python
+```
+
+`basics/` holds the early exercises — base counting, GC content, reverse
+complement, translation — kept for reference.
